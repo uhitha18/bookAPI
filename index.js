@@ -1,6 +1,9 @@
 //frame work
+require("dotenv").config();
+
 const { response } = require("express");
 const express=require("express")
+const mongoose=require("mongoose");
 //Database
 const database = require("./database/index");
 //Initializing express
@@ -9,7 +12,11 @@ const shapeai=express();
 //configurations
 
 shapeai.use(express.json());
+//Establish connection for database
 
+mongoose.connect(process.env.MONGO_URL
+
+).then(() => console.log("Connection Established!!!!!!!"));
 /* 
 Route      /
 Description   get all books
@@ -184,4 +191,80 @@ shapeai.put("/publication/update/book/:isbn",(req,res)=> {
   message:"Successfully updated publication",
   });
 })
+/* 
+Route        /book/delete
+Description   delete a book
+Access        public
+Parameters    isbn
+Method        DELETE
+*/
+shapeai.delete("/book/delete/:isbn",(req,res) => {
+  //replace the whole database
+const updatedBookDatabase = database.books.filter(
+  (book) => book.ISBN!==req.params.isbn);
+database.books=updatedBookDatabase;
+
+return res.json({ books: database.books});
+  //edit at single point directly to master database
+});
+/*
+Route        /book/delete/author
+Description   delete an author from a book
+Access        public
+Parameters    isbn,authorId
+Method        DELETE
+*/
+shapeai.delete("/book/delete/author/:isbn/:authorId",(req,res) => {
+  //update bookdatabase
+database.books.forEach((book) =>{
+  if(book.ISBN === req.params.isbn){
+    const newAuthorList = book.authors.filter(
+      (author) => author!==parseInt(req.params.authorId));
+      book.authors=newAuthorList;
+      return;
+  }
+});
+//update author database
+database.authors.forEach((author)=>{
+  if(author.id===parseInt(req.params.authorId)){
+    const newBooksList=author.books.filter(
+      (book) => book!== req.params.isbn
+    );
+    author.books=newBooksList;
+    return;
+  }
+});
+return res.json({book: database.books, author: database.authors , 
+  message:"Author was deleted"})
+
+});
+
+/*
+Route        /publication/delete/book
+Description   delete a publication from a book
+Access        public
+Parameters    isbn,authorId
+Method        DELETE
+*/
+
+shapeai.delete(" /publication/delete/book/:isbn/:pubId",(req,res) => {
+   database.publications.forEach((publication) => {
+    if(publication.id === parsenInt(req.params.pubId)){
+      const newBooksList = publication.books.filter(
+        (book) => book !== req.params.isbn) ;
+        publication.books=newBooksList;
+        return ;
+    }
+   });
+   //update book database
+  database.books.forEach((book) => {
+    if(book.ISBN===req.params.isbn){
+      book.publication=0;  // no publication available
+
+      return;
+    }
+  });
+  return res.json({books: database.books, publications: database.publications});
+  });
+
 shapeai.listen(3000,()=> console.log("Server is running"));
